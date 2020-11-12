@@ -1,4 +1,4 @@
-import consts
+import utils
 
 class BaseStation:
     id = -1
@@ -8,7 +8,7 @@ class BaseStation:
         BaseStation.id += 1
         self.id = BaseStation.id
         self.position = position    # [X, Y, Z]
-        self.size = consts.BS_SIZE  # [X, Y, Z]
+        self.size = utils.BS_SIZE  # [X, Y, Z]
         self.networkQuality = 0.8
     
     def SimulateNetworkQuality(self):
