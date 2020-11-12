@@ -1,3 +1,5 @@
+import consts
+
 class BaseStation:
     id = -1
 
@@ -5,8 +7,8 @@ class BaseStation:
     def __init__(self, position):
         BaseStation.id += 1
         self.id = BaseStation.id
-        self.position = position
-        self.size = [1, 1, 35]
+        self.position = position    # [X, Y, Z]
+        self.size = consts.BS_SIZE  # [X, Y, Z]
         self.networkQuality = 0.8
     
     def SimulateNetworkQuality(self):

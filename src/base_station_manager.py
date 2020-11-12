@@ -1,8 +1,9 @@
 from base_station import BaseStation
+import consts
 
 class BaseStationManager:
-    def __init__(self, numBaseStations):
+    def __init__(self):
         self.baseStations = []
-        for _ in range(numBaseStations):
-            pos = [1, 2, 3]
-            self.baseStations.append(BaseStation(pos))
+
+        for i in range(consts.BS_NUM):
+            self.baseStations.append(BaseStation(consts.BS_POS_LIST[i]))
