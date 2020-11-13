@@ -21,6 +21,18 @@ BS_POS_LIST = [
     [200, 200, 0],
     [300, 200, 0]]
 
+# Path consts
+START_POS = [10, 10, 1]
+END_POS = [300, 300, 25]
+
+# Path search coords - len = 26 
+SEARCH_POS_LIST = []
+r = np.arange(-3, 4, 3)
+for x in r:
+    for y in r:
+        for z in r:
+            SEARCH_POS_LIST.append([x, y, z])
+
 # Old consts
 MIN_LAT = 51.241700
 MAX_LAT = 51.245600
@@ -34,22 +46,7 @@ def distanceCalc(A, B):
     b = np.array((B[0], B[1], B[2]))
     return np.linalg.norm(a-b)
 
-def angleCalc2D(A, B):
-    TWOPI = 6.2831853071795865
-    RAD2DEG = 57.2957795130823209
-    if A[0] == B[0] and A[1] == B[1]:
-        return 0.0
-    theta = np.arctan2(B[0] - A[0], B[1] - A[1])
-    if theta < 0:
-        theta += TWOPI
-    return theta * RAD2DEG
-
-def angleCalcVec(A, B):
-    a = np.array((A[0], A[1], A[2]))
-    b = np.array((B[0], B[1], B[2]))
-    return vg.angle(a, b)
-
-def cellAngle(A, B):
+def angleCalc(A, B):
     a = np.array((A[0], A[1], A[2]))
     b = np.array((B[0], B[1], B[2]))
     c = b - a   # calc difference vector

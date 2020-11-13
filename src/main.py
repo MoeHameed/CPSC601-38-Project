@@ -1,6 +1,8 @@
 from base_station_manager import BaseStationManager as BSM
 from air_sim_client import AirSimClient as ASC
+import path_planner as pp
 import utils
+
 
 def main():
     # Init base station manager
@@ -11,13 +13,19 @@ def main():
 
     # for i in range(len(bsm.baseStations)):
     #     asc.spawnObject(bsm.baseStations[i].id, bsm.baseStations[i].size, bsm.baseStations[i].position)
-
-    for i in range(0, 100):
-        print([i, i, 0], bsm.baseStations[0].position, utils.distanceCalc([i, i, 0], bsm.baseStations[0].position), bsm.GetNetQuality([i, i, 0]))
     
     # Generate initial path
+    initialPath = pp.genInitialPath(utils.START_POS, utils.END_POS)
+    
     # Optimize path
     # Fly path using AirSimClient
+    # Evaluate path
 
 if __name__ == "__main__":
     main()
+
+
+
+# Test distance and net quality
+# for i in range(0, 100):
+#     print([i, i, 0], bsm.baseStations[0].position, utils.distanceCalc([i, i, 0], bsm.baseStations[0].position), bsm.GetNetQuality([i, i, 0]))
