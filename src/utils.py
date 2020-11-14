@@ -22,16 +22,8 @@ BS_POS_LIST = [
     [300, 200, 0]]
 
 # Path consts
-START_POS = [10, 10, 1]
-END_POS = [300, 300, 25]
-
-# Path search coords - len = 26 
-SEARCH_POS_LIST = []
-r = np.arange(-3, 4, 3)
-for x in r:
-    for y in r:
-        for z in r:
-            SEARCH_POS_LIST.append([x, y, z])
+START_POS = (1, 1, 1)
+END_POS = (15, 40, 25)
 
 # Old consts
 MIN_LAT = 51.241700

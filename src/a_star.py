@@ -1,4 +1,4 @@
-""" generic A-Star path searching algorithm """
+""" Generic A-Star path searching algorithm source: https://github.com/jrialland/python-astar """
 
 from abc import ABCMeta, abstractmethod
 from heapq import heappush, heappop, heapify
@@ -10,8 +10,7 @@ class AStar:
     __slots__ = ()
 
     class SearchNode:
-        __slots__ = ('data', 'gscore', 'fscore',
-                     'closed', 'came_from', 'out_openset')
+        __slots__ = ('data', 'gscore', 'fscore', 'closed', 'came_from', 'out_openset')
 
         def __init__(self, data, gscore=Infinite, fscore=Infinite):
             self.data = data
@@ -25,7 +24,6 @@ class AStar:
             return self.fscore < b.fscore
 
     class SearchNodeDict(dict):
-
         def __missing__(self, k):
             v = AStar.SearchNode(k)
             self.__setitem__(k, v)
@@ -67,8 +65,7 @@ class AStar:
         if self.is_goal_reached(start, goal):
             return [start]
         searchNodes = AStar.SearchNodeDict()
-        startNode = searchNodes[start] = AStar.SearchNode(
-            start, gscore=.0, fscore=self.heuristic_cost_estimate(start, goal))
+        startNode = searchNodes[start] = AStar.SearchNode(start, gscore=.0, fscore=self.heuristic_cost_estimate(start, goal))
         openSet = []
         heappush(openSet, startNode)
         while openSet:
@@ -80,14 +77,12 @@ class AStar:
             for neighbor in map(lambda n: searchNodes[n], self.neighbors(current.data)):
                 if neighbor.closed:
                     continue
-                tentative_gscore = current.gscore + \
-                    self.distance_between(current.data, neighbor.data)
+                tentative_gscore = current.gscore + self.distance_between(current.data, neighbor.data)
                 if tentative_gscore >= neighbor.gscore:
                     continue
                 neighbor.came_from = current
                 neighbor.gscore = tentative_gscore
-                neighbor.fscore = tentative_gscore + \
-                    self.heuristic_cost_estimate(neighbor.data, goal)
+                neighbor.fscore = tentative_gscore + self.heuristic_cost_estimate(neighbor.data, goal)
                 if neighbor.out_openset:
                     neighbor.out_openset = False
                     heappush(openSet, neighbor)
