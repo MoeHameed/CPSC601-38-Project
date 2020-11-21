@@ -2,25 +2,38 @@ from base_station_manager import BaseStationManager as BSM
 from air_sim_client import AirSimClient as ASC
 from path_planner import PathPlanner
 import utils
+import matplotlib.pyplot as plt
 
 
 def main():
     # Init base station manager
-    bsm = BSM()
+    # bsm = BSM()
 
+    # Generate initial path
+    initialPath = PathPlanner().search(utils.START_POS, utils.END_POS)
+
+    qual = 0
+    for node in initialPath:
+        q = utils.nodeNetworkQualCalc(node)
+        print(node, q)
+        qual += q
+    print("avg", qual, len(initialPath), qual/len(initialPath))
+        
+
+    
+    # Optimize path
+    
     # Init air sim client
     # asc = ASC()
 
     # Spawn base stations
     # for i in range(len(bsm.baseStations)):
     #     asc.spawnObject(bsm.baseStations[i].id, bsm.baseStations[i].size, bsm.baseStations[i].position)
-    
-    # Generate initial path
-    initialPath = PathPlanner(True, True).search(utils.START_POS, utils.END_POS)
-    
-    # Optimize path
+
     # Fly path using AirSimClient
+
     # Evaluate path
+
 
 if __name__ == "__main__":
     main()
