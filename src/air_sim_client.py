@@ -5,10 +5,9 @@ import time
 class AirSimClient:
     def __init__(self):
         self.spawnedObjs = []
-        self.client = airsim.VehicleClient()
+        self.client = airsim.MultirotorClient()
         self.client.confirmConnection()
 
-    
     def spawnObject(self, name, size, position):
         objPose = airsim.Pose()
         x = position[0] + (0.5 * (size[0] - 1))
@@ -24,6 +23,25 @@ class AirSimClient:
         self.spawnedObjs.append(objName)
         
         print("Spawned: ", objName)
+
+    def flyPath(self, path):
+        self.client.enableApiControl(True)
+        self.client.armDisarm(True)
+        self.client.takeoffAsync().join()
+
+        p = []
+        for (x, y, z) in path:
+            p.append(airsim.Vector3r(x, y, -z))
+
+        print(len(p))
+
+        self.client.simPlotLineStrip(p, [1, 0, 0, 1], 15, 100000, True)
+
+        print("Flying along path ...")
+        vel = 3
+        self.client.moveOnPathAsync(p, vel, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False,0), 1, 0).join()
+        print("Done!")
+
 
 # def updateObject(name, topleft):
 #     n = "SimObject_" + str(name)

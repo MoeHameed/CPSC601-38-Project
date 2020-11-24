@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import vg
+import itertools
 
 # [X, Y, Z]
 # X = Longitude, Y = Latitude, Z = Altitude
@@ -12,32 +13,9 @@ AREA_GROUND_HEIGHT = 1
 
 # Base Station consts
 BS_SIZE = [3, 3, 25]
-BS_NUM = 4
 BS_RANGE = 10
-BS_DIST_BETWEEN = 20
 BS_ANT_HEIGHT = 23
-BS_POS_LIST = [(10, 11, 10), (10, 31, 10)]
-
-# for i in range(1, BS_NUM+1):
-#     for j in range(1, BS_NUM):
-#         loc = (BS_DIST_BETWEEN * i, BS_DIST_BETWEEN * j, BS_ANT_HEIGHT)
-#         # if i % 2 == 0:
-#         #     loc = (BS_DIST_BETWEEN * i, BS_DIST_BETWEEN * j, BS_ANT_HEIGHT)
-#         # else:
-#         #     loc = (BS_DIST_BETWEEN * i, (BS_DIST_BETWEEN * j) + BS_DIST_BETWEEN/2, BS_ANT_HEIGHT)
-#         BS_POS_LIST.append(loc)
-
-# Path consts
-START_POS = (1, 1, 1)
-END_POS = (15, 35, 13)
-
-# Old consts
-MIN_LAT = 51.241700
-MAX_LAT = 51.245600
-MIN_LON = -114.885100
-MAX_LON = -114.879500
-LAT_DIFF = 0.000008986175
-LON_DIFF = 0.00001432225
+BS_POS_LIST = []
 
 def distanceCalc(A, B):
     a = np.array((A[0], A[1], A[2]))
@@ -52,41 +30,29 @@ def angleCalc(A, B):
     c = b - a   # calc difference vector
     z = np.array(([0, 0, 1])) # unit vector
     return vg.angle(c, z)
-    
-    # Used to visualize
-    # data = [A, B]
-    # x, y, z = zip(*data)
-    # ax = plt.axes(projection='3d')
-    # ax.plot3D(x, y, z, 'ro-')
-    # ax.text(B[0], B[1], B[2], "{:.2f}".format(angle))
-    # plt.pause(0.05)
-
-
-# def nodeNetworkQualCalc2(node):
-#     qual = 0
-#     for (x, y, z) in BS_POS_LIST:
-#         dist = distanceCalc(node, (x, y, z))
-#         if dist <= BS_RANGE+1:
-#             qual += 0.05*dist - 0.0006*dist**2 
-#     return qual
 
 def nodeNetworkQualCalc(node):
     # Store quality for each valid bs
     qualList = []
-    for (x, y, z) in BS_POS_LIST:
+    for (x0, y0, _) in BS_POS_LIST:
+        x = x0 + 1
+        y = y0 + 1
+        z = BS_ANT_HEIGHT
+
         dist = distanceCalc(node, (x, y, z))
+
         if dist <= BS_RANGE+1:
-            qdist = 0.43*dist - 0.043*dist**2
+            qdist = 0.43*dist - 0.043*dist**2   # TODO: FIND NEW FUNCTION
             qdist = max(0, min(1, qdist))
 
             ang = angleCalc([x, y, z], [node[0], node[1], node[2]])
-            qang = -3.928571 + 0.09761905*ang - 0.0004761905*ang**2
+            qang = -3.928571 + 0.09761905*ang - 0.0004761905*ang**2  # TODO: FIND NEW FUNCTION
             qang = max(0, min(1, qang))
 
-            q = (0.5 * qang) + (0.5 * qdist)
+            q = ((1/3) * qang) + ((1/3) * qdist) + ((1/3) * 1) # TODO: ADD QUALITY FOR THIS BS
             qualList.append(q)
 
-    # Evenlly weighted sum for each quality [0, 1]
+    # Evenly weighted sum for each quality => [0, 1]
     totalQual = 0
     if len(qualList) > 0:
         weight = 1/len(qualList)    
@@ -95,12 +61,134 @@ def nodeNetworkQualCalc(node):
 
     return totalQual
 
-# Visualize radiation pattern
+def threshSmoothPath(initialPath, thresh):
+    seq = itertools.product([0,1], repeat=6)
+
+    bestQual = 0
+    bestPath = []
+
+    threshQual = 1
+    threshPath = []
+
+    for i in list(seq):  
+        newPath = smoothPath(initialPath, i)
+
+        avgQual = calcPathAvgQual(newPath)
+
+        if avgQual > bestQual:
+            bestQual = avgQual
+            bestPath = newPath
+
+        if avgQual < threshQual and avgQual >= thresh:
+            threshQual = avgQual
+            threshPath = newPath
+            
+    return threshQual, threshPath, bestQual, bestPath
+
+# 0 = insert midpoints, 1 = avg midpoints
+def smoothPath(initialPath, seq):
+    points = initialPath
+    for i in seq:
+        if i == 0:
+            points = insertMidpoints(points)
+        elif i == 1:
+            points = avgMidpoints(points)
+    return points
+
+def insertMidpoints(points):
+    path = []
+    for i in range(len(points)-1):
+        x3 = 0.5 * points[i][0] + 0.5 * points[i+1][0]
+        y3 = 0.5 * points[i][1] + 0.5 * points[i+1][1]
+        z3 = 0.5 * points[i][2] + 0.5 * points[i+1][2]
+        path.append((points[i][0], points[i][1], points[i][2]))
+        path.append((x3, y3, z3))
+    path.append(points[-1])
+    return path
+
+def avgMidpoints(points):
+    path = [points[0]]
+    for i in range(len(points)-1):
+        x3 = 0.5 * points[i][0] + 0.5 * points[i+1][0]
+        y3 = 0.5 * points[i][1] + 0.5 * points[i+1][1]
+        z3 = 0.5 * points[i][2] + 0.5 * points[i+1][2]
+        path.append((x3, y3, z3))
+    path.append(points[-1])
+    return path
+
+def getCornerPoints(path):
+    cornerPoints = [path[0]]
+    for i in range(1, len(path)-1):
+        x1 = path[i-1][0]
+        y1 = path[i-1][1]
+        z1 = path[i-1][2]
+
+        x2 = path[i][0]
+        y2 = path[i][1]
+        z2 = path[i][2]
+
+        x3 = path[i+1][0]
+        y3 = path[i+1][1]
+        z3 = path[i+1][2]
+
+        v1 = [(x2 - x1), (y2 - y1), (z2 - z1)]
+        v2 = [(x3 - x1), (y3 - y1), (z3 - z1)]
+
+        if not vg.almost_collinear(v1, v2):
+            cornerPoints.append((x2, y2, z2))
+
+    cornerPoints.append(path[-1])
+    return cornerPoints
+
+def calcPathAvgQual(path):
+    qual = 0
+    for node in path:
+        qual += nodeNetworkQualCalc(node)
+    return qual/len(path)
+
+def calcPathDist(path):
+    dist = 0
+    for i in range(len(path)-1):
+        dist += distanceCalc(path[i], path[i+1])
+    dist += distanceCalc(path[-2], path[-1])
+    return dist
+
+def plotPath(path):
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    # Plot the base station antennas
+    for (x, y, _) in BS_POS_LIST:
+        ax.plot3D(x, y, BS_ANT_HEIGHT, 'yo')
+    
+    # Plot the path
+    for i in range(len(path)-1):
+        xs = [path[i][0], path[i+1][0]]
+        ys = [path[i][1], path[i+1][1]]
+        zs = [path[i][2], path[i+1][2]]
+        ax.plot3D(xs, ys, zs, 'ro-')
+    ax.plot3D(path[0][0], path[0][1], path[0][2], 'bo-')
+    ax.plot3D(path[-1][0], path[-1][1], path[-1][2], 'ko-')
+
+    plt.show()
+
+# Create BS in hex grid
+# for i in range(1, BS_NUM+1):
+#     for j in range(1, BS_NUM):
+#         loc = (BS_DIST_BETWEEN * i, BS_DIST_BETWEEN * j, BS_ANT_HEIGHT)
+#         # if i % 2 == 0:
+#         #     loc = (BS_DIST_BETWEEN * i, BS_DIST_BETWEEN * j, BS_ANT_HEIGHT)
+#         # else:
+#         #     loc = (BS_DIST_BETWEEN * i, (BS_DIST_BETWEEN * j) + BS_DIST_BETWEEN/2, BS_ANT_HEIGHT)
+#         BS_POS_LIST.append(loc)
+
+# Visualize coverage pattern
 # ax = plt.axes(projection='3d')
 # ax.set_xlabel('x')
 # ax.set_ylabel('y')
 # ax.set_zlabel('z')
-
 # for y in range(0, 51):
 #     if y == 11 or y == 31:
 #         print("BS", y)
@@ -110,7 +198,6 @@ def nodeNetworkQualCalc(node):
 #         ax.plot(10, y, 10, marker='o', color='red', alpha=q)
 #         print("{:.2f}".format(q))
 #         #plt.pause(0.01)
-
 # plt.show()
 
 # Distribution of quality and angle weight at 0-deg y0 = 0.3, y1 = 0.5 y2 = 0.7
@@ -118,9 +205,7 @@ def nodeNetworkQualCalc(node):
 # y0 = (0.93,0.78,0.44,0.30,0.44,0.78,0.93)
 # y1 = (0.95,0.84,0.60,0.50,0.60,0.84,0.95)
 # y2 = (0.97,0.91,0.76,0.70,0.76,0.91,0.97)
-
 # plt.plot(x, y0, 'ro-')
 # plt.plot(x, y1, 'bo-')
 # plt.plot(x, y2, 'yo-')
-
 # plt.show()
