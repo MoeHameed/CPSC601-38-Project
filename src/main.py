@@ -4,25 +4,30 @@ import utils
 import matplotlib.pyplot as plt
 import vg
 
-simulate = True
+simulate = False
 
-minQuality = 0.6949
+minQuality = 0.80
 
-START_POS = (1, 1, 1)
-END_POS = (35, 48, 22)
+START_POS = (15, 15, 18)
+END_POS = (50, 75, 27)
 
-BS_POS_LIST_A = [(25, 25, 0), (10, 45, 0), (15, 55, 0)]
+BS_POS_LIST_A = [(25, 25, 0), (25, 85, 0), (85, 25, 0), (85, 85, 0)]
 BS_POS_LIST_B = []
 BS_POS_LIST_C = []
 
 def main():
     utils.BS_POS_LIST = BS_POS_LIST_A
 
+    print("Generating distance based path . . .")
+    distPath = PathPlanner(False).search(START_POS, END_POS)
+    print("Distance based path average quality: {:.4f}".format(utils.calcPathAvgQual(distPath)))
+    print("Distance based path total distance: {:.2f} meters".format(utils.calcPathDist(distPath)))
+
     # Generate initial optimal-greedy path
     print("Generating initial path . . .")
     initialPath = PathPlanner().search(START_POS, END_POS)
-    print("Initial path average quality:", utils.calcPathAvgQual(initialPath))
-    print("Initial path total distance:", utils.calcPathDist(initialPath))
+    print("Initial path average quality: {:.4f}".format(utils.calcPathAvgQual(initialPath)))
+    print("Initial path total distance: {:.2f} meters".format(utils.calcPathDist(initialPath)))
     
     # Optimize path
     print("Generating smooth path . . .")
@@ -34,9 +39,9 @@ def main():
         print("Smooth path not found with minimum quality of {}. Maximum quality found is {:.4f}".format(minQuality, bestQual))
         return
     
-    print("Smooth path average quality:", smoothQual)
-    print("Smooth path total distance:", utils.calcPathDist(smoothPath))
-    utils.plotPath(smoothPath)
+    print("Smooth path average quality: {:.4f}".format(smoothQual))
+    print("Smooth path total distance: {:.2f} meters".format(utils.calcPathDist(smoothPath)))
+    utils.plotPath([smoothPath])
     
     if simulate:
         print("Simulating smooth path in AirSim . . .")

@@ -13,14 +13,25 @@ AREA_GROUND_HEIGHT = 1
 
 # Base Station consts
 BS_SIZE = [3, 3, 25]
-BS_RANGE = 10
+BS_RANGE = 40
 BS_ANT_HEIGHT = 23
 BS_POS_LIST = []
+
+def cart2sph(coord):
+    x, y, z = coord
+    hxy = np.hypot(x, y)
+    r = np.hypot(hxy, z)
+    el = np.arctan2(hxy, z) # z-axis down, switch for xy-plane up
+    az = np.arctan2(y, x)
+    return r, np.rad2deg(az), np.rad2deg(el)    # radius, theta, phi
 
 def distanceCalc(A, B):
     a = np.array((A[0], A[1], A[2]))
     b = np.array((B[0], B[1], B[2]))
-    return np.linalg.norm(a-b)
+    x, y, z = b - a
+    hxy = np.hypot(x, y)
+    r = np.hypot(hxy, z)
+    return r
 
 def angleCalc(A, B):
     a = np.array((A[0], A[1], A[2]))
@@ -34,22 +45,20 @@ def angleCalc(A, B):
 def nodeNetworkQualCalc(node):
     # Store quality for each valid bs
     qualList = []
-    for (x0, y0, _) in BS_POS_LIST:
-        x = x0 + 1
-        y = y0 + 1
-        z = BS_ANT_HEIGHT
+    for (x, y, _) in BS_POS_LIST:
+        a = np.array([node[0], node[1], node[2]])
+        b = np.array([x+1, y+1, BS_ANT_HEIGHT]) # add 1 since it is 3x3
 
-        dist = distanceCalc(node, (x, y, z))
+        dist, _, ang = cart2sph(b-a)
 
         if dist <= BS_RANGE+1:
-            qdist = 0.43*dist - 0.043*dist**2   # TODO: FIND NEW FUNCTION
+            qdist = 0.03174603 + 0.139914*dist - 0.005735367*dist**2 + 0.00005606192*dist**3
             qdist = max(0, min(1, qdist))
 
-            ang = angleCalc([x, y, z], [node[0], node[1], node[2]])
-            qang = -3.928571 + 0.09761905*ang - 0.0004761905*ang**2  # TODO: FIND NEW FUNCTION
+            qang = -2.5 + 0.0722222*ang - 0.00037037*ang**2
             qang = max(0, min(1, qang))
 
-            q = ((1/3) * qang) + ((1/3) * qdist) + ((1/3) * 1) # TODO: ADD QUALITY FOR THIS BS
+            q = (0.7 * qang) + (0.3 * qdist) # TODO: ADD SIMULATED QUALITY FOR THIS BS
             qualList.append(q)
 
     # Evenly weighted sum for each quality => [0, 1]
@@ -153,7 +162,10 @@ def calcPathDist(path):
     dist += distanceCalc(path[-2], path[-1])
     return dist
 
-def plotPath(path):
+def plotPath(paths):
+    if len(paths) > 3:
+        return
+
     ax = plt.axes(projection='3d')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
@@ -161,17 +173,57 @@ def plotPath(path):
 
     # Plot the base station antennas
     for (x, y, _) in BS_POS_LIST:
-        ax.plot3D(x, y, BS_ANT_HEIGHT, 'yo')
+        ax.plot3D(x+1, y+1, BS_ANT_HEIGHT, 'yo')
     
-    # Plot the path
-    for i in range(len(path)-1):
-        xs = [path[i][0], path[i+1][0]]
-        ys = [path[i][1], path[i+1][1]]
-        zs = [path[i][2], path[i+1][2]]
-        ax.plot3D(xs, ys, zs, 'ro-')
+    color = ['ro-', 'go-', 'yo-']
+    ci = 0
+
+    # Plot the paths
+    for path in paths:
+        for i in range(len(path)-1):
+            xs = [path[i][0], path[i+1][0]]
+            ys = [path[i][1], path[i+1][1]]
+            zs = [path[i][2], path[i+1][2]]
+            ax.plot3D(xs, ys, zs, color[ci])
+        ci += 1
     ax.plot3D(path[0][0], path[0][1], path[0][2], 'bo-')
     ax.plot3D(path[-1][0], path[-1][1], path[-1][2], 'ko-')
 
+    plt.show()
+
+def vizQualityPattern():
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    for y in range(-41, 122):
+        for z in range(-17, 64):
+            if y == 0 and z == 23:
+                continue
+            q = nodeNetworkQualCalc((0, y, z))
+            if q > 0.9:
+                ax.plot(0, y, z, marker='o', color='#C73E1D', alpha=1)
+            elif q > 0.8:
+                ax.plot(0, y, z, marker='o', color='#F18F01', alpha=1)
+            elif q > 0.7:
+                ax.plot(0, y, z, marker='o', color='#D5B942', alpha=1)
+            elif q > 0.6:
+                ax.plot(0, y, z, marker='o', color='#330F0A', alpha=1)
+            elif q > 0.5:
+                ax.plot(0, y, z, marker='o', color='#EDAFB8', alpha=1)
+            elif q > 0.4:
+                ax.plot(0, y, z, marker='o', color='#B1CC74', alpha=1)
+            elif q > 0.3:
+                ax.plot(0, y, z, marker='o', color='#E8FCC2', alpha=1)
+            elif q > 0.2:
+                ax.plot(0, y, z, marker='o', color='#D0F4EA', alpha=1)
+            elif q > 0.1:
+                ax.plot(0, y, z, marker='o', color='#829399', alpha=1)
+            elif q > 0:
+                ax.plot(0, y, z, marker='o', color='#545F66', alpha=1)
+
+    ax.view_init(elev=0, azim=0)
     plt.show()
 
 # Create BS in hex grid
@@ -184,22 +236,6 @@ def plotPath(path):
 #         #     loc = (BS_DIST_BETWEEN * i, (BS_DIST_BETWEEN * j) + BS_DIST_BETWEEN/2, BS_ANT_HEIGHT)
 #         BS_POS_LIST.append(loc)
 
-# Visualize coverage pattern
-# ax = plt.axes(projection='3d')
-# ax.set_xlabel('x')
-# ax.set_ylabel('y')
-# ax.set_zlabel('z')
-# for y in range(0, 51):
-#     if y == 11 or y == 31:
-#         print("BS", y)
-#         continue
-#     q = nodeNetworkQualCalc((10, y, 10))
-#     if q > 0:
-#         ax.plot(10, y, 10, marker='o', color='red', alpha=q)
-#         print("{:.2f}".format(q))
-#         #plt.pause(0.01)
-# plt.show()
-
 # Distribution of quality and angle weight at 0-deg y0 = 0.3, y1 = 0.5 y2 = 0.7
 # x = np.arange(0, 7, 1)
 # y0 = (0.93,0.78,0.44,0.30,0.44,0.78,0.93)
@@ -208,4 +244,22 @@ def plotPath(path):
 # plt.plot(x, y0, 'ro-')
 # plt.plot(x, y1, 'bo-')
 # plt.plot(x, y2, 'yo-')
+# plt.show()
+
+# Create gif
+# ax = plt.axes(projection='3d')
+# ax.set_xlabel('x')
+# ax.set_ylabel('y')
+# ax.set_zlabel('z')
+
+# n = PathPlanner().neighbors((0, 0, 0))
+# for (x, y, z) in n:
+#     ax.plot([0, x], [0, y], [0, z], 'ro-')
+
+# ax.plot(0, 0, 0, 'bo')
+
+# for ii in range(0,90,5):
+#     ax.view_init(elev=20., azim=ii)
+#     plt.savefig(".\\movie\\movie%d.png" % ii)
+
 # plt.show()

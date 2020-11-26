@@ -33,14 +33,14 @@ class AirSimClient:
         for (x, y, z) in path:
             p.append(airsim.Vector3r(x, y, -z))
 
-        print(len(p))
-
         self.client.simPlotLineStrip(p, [1, 0, 0, 1], 15, 100000, True)
 
-        print("Flying along path ...")
-        vel = 3
-        self.client.moveOnPathAsync(p, vel, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False,0), 1, 0).join()
+        print("Flying along path . . .")
+        self.client.moveOnPathAsync(p, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0), 1, 0).join()
         print("Done!")
+
+        self.client.hoverAsync().join()
+        print("Drone is now hovering . . . ")
 
 
 # def updateObject(name, topleft):
