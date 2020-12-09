@@ -27,20 +27,51 @@ class AirSimClient:
     def flyPath(self, path):
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
-        self.client.takeoffAsync().join()
 
         p = []
         for (x, y, z) in path:
             p.append(airsim.Vector3r(x, y, -z))
 
+        print("Plotting path points . . .")
+        self.client.simPlotPoints([(p[0])], [0, 0, 1, 1], 15, 100000, True)
+        self.client.simPlotPoints([(p[-1])], [1, 1, 1, 1], 15, 100000, True)
+        #self.client.simPlotPoints(p, [1, 0, 0, 1], 15, 100000, True)
         self.client.simPlotLineStrip(p, [1, 0, 0, 1], 15, 100000, True)
+    
+        print("Taking off . . .")
+        self.client.takeoffAsync().join()
+        print("Airborne!")
 
+        print("Going to start position . . .")
+        self.client.moveToPositionAsync(p[0].x_val, p[0].y_val, p[0].z_val, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0)).join()
+        print("At start position!")
+
+        print("Starting flight in 5 seconds . . .")
+        time.sleep(5)
+
+        realPos = []
         print("Flying along path . . .")
-        self.client.moveOnPathAsync(p, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0), 1, 0).join()
+        #ret = self.client.moveToPositionAsync(pos.x_val, pos.y_val, pos.z_val, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0), 5, 0)
+        ret = self.client.moveOnPathAsync(p, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0), 1, 0)
+
+        while(not ret._set_flag):
+            time.sleep(0.5)
+            mPos = self.client.getMultirotorState().kinematics_estimated.position
+            rPos = (mPos.x_val, mPos.y_val, mPos.z_val)
+            realPos.append(rPos)
+
         print("Done!")
 
+        print("Drone hovering at end position . . . ")
+        self.client.moveToPositionAsync(p[-1].x_val, p[-1].y_val, p[-1].z_val, 3, 3e38, airsim.DrivetrainType.ForwardOnly, airsim.YawMode(False, 0)).join()
         self.client.hoverAsync().join()
-        print("Drone is now hovering . . . ")
+
+        # Return actual drone path flown
+        rp2 = []
+        for (x, y, z) in realPos:
+            rp2.append((x, y, -z))
+        
+        return rp2
 
 
 # def updateObject(name, topleft):
